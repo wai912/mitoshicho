@@ -1,36 +1,27 @@
-import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import {
-  Accordion, AccordionDetails, AccordionSummary, Box, Button, Card, CardContent, CardHeader, Chip, Dialog, DialogActions,
-  DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography,
+  Accordion, AccordionDetails, AccordionSummary, Box, Card, CardContent, CardHeader, Chip, Stack, Typography,
 } from '@mui/material';
-import { useMemo, useState, type ReactNode } from 'react';
-import { bigExpenses, summarize, type BigExpense, type CategoryRow, type PeriodSummary } from '../../domain/cashflow';
-import { addPeriods, periodRule, periodStart } from '../../domain/period';
+import { useMemo, type ReactNode } from 'react';
+import { summarize, type CategoryRow, type PeriodSummary } from '../../domain/cashflow';
+import { addPeriods, periodRule } from '../../domain/period';
 import { DRIFT_LABEL, driftHints, type DriftHint } from '../../domain/review';
 import type { AppData, CategoryActual, CategoryKind } from '../../domain/types';
-import { db, newId } from '../../db/db';
 import { yen } from '../../lib/money';
-import { MoneyField } from '../../components/MoneyField';
 import { PeriodNav } from '../../components/PeriodNav';
 import { InfoTip } from '../../components/InfoTip';
 import { FitBar, Figure } from '../../components/FitBar';
 import { CategoryItems } from '../budget/parts';
-import { OnceItemDialog } from '../settings/dialogs';
 import { OutflowsCard } from '../home/Outlook';
-import { ScheduleList } from '../../components/ScheduleList';
 
-const REASON: Record<BigExpense['reason'], string> = { yearly: '年払い', interval: '数か月ごと', once: '1回だけ', override: 'いつもより多め' };
-
-/** 計画: その月の大きい出費と、カテゴリごとの予算を、先月のずれをふまえてざっくり決める */
+/** 計画: カテゴリごとの予算を、先月のずれをふまえてざっくり決める。下に出金予定 */
 export function PlanPage({ data, period, setPeriod, current, menu }: {
   data: AppData; period: string; setPeriod: (p: string) => void; current: string; menu?: ReactNode;
 }) {
   const startDay = periodRule(data.settings);
   const focus = data.settings.planFocus ?? 'budget';
   const s = useMemo(() => summarize(data, period, current), [data, period, current]);
-  const big = useMemo(() => bigExpenses(data, period), [data, period]);
   const prev = addPeriods(period, -1);
   // 先月の実績（ふりかえりで入れた合計と、付けた理由・メモ）。カテゴリごと
   const lastMonth = useMemo(() => new Map(data.categoryActuals.filter((a) => a.periodId === prev).map((a) => [a.categoryId, a])), [data, prev]);
@@ -40,8 +31,6 @@ export function PlanPage({ data, period, setPeriod, current, menu }: {
     for (const h of driftHints(data, period)) if (!m.has(h.category.id)) m.set(h.category.id, h);
     return m;
   }, [data, period]);
-  const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<BigExpense | null>(null);
 
   const total = (k: CategoryKind[]) => s.categories.filter((c) => k.includes(c.kind)).reduce((a, c) => a + c.planned, 0);
   const income = total(['income']);
@@ -67,23 +56,6 @@ export function PlanPage({ data, period, setPeriod, current, menu }: {
         </CardContent>
       </Card>
 
-      <Card data-tour="plan-big">
-        <CardHeader title="この月の大きい出費" titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }} sx={{ pb: 0 }} />
-        {big.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 1 }}>なし</Typography>
-        ) : (
-          <ScheduleList rows={big.map((b) => ({
-            key: b.item.id, date: b.date, label: `${periodStart(period, startDay).getMonth() + 1}月`,
-            title: b.memo || b.item.name, amount: b.amount,
-            sub: `${b.category.name}・${b.reason === 'override' ? `いつもは ${yen(b.usual ?? 0)}` : REASON[b.reason]}`,
-            onClick: b.reason === 'once' ? () => setEditing(b) : undefined,
-          }))} />
-        )}
-        <Box sx={{ px: 2, pt: 1, pb: 2 }}>
-          <Button startIcon={<AddIcon />} variant="outlined" size="small" onClick={() => setAdding(true)}>大きい出費を追加</Button>
-        </Box>
-      </Card>
-
       <Card data-tour="plan-categories">
         <CardHeader title="カテゴリごとの予算" titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }} sx={{ pb: 0 }} />
         <CardContent sx={{ pt: 1, pb: '8px !important' }}>
@@ -99,8 +71,6 @@ export function PlanPage({ data, period, setPeriod, current, menu }: {
 
       <OutflowsCard summary={s} title="出金予定" />
 
-      {adding && <AddBigExpenseDialog data={data} period={period} onClose={() => setAdding(false)} />}
-      {editing && <OnceItemDialog value={editing.item} planned={editing.amount} data={data} onClose={() => setEditing(null)} />}
     </Stack>
   );
 }
@@ -226,41 +196,5 @@ function CategoryRowView({ row, last, hint, period, data }: {
         <CategoryItems row={row} period={period} data={data} />
       </AccordionDetails>
     </Accordion>
-  );
-}
-
-/** 大きい出費を、この月だけの項目として足す */
-function AddBigExpenseDialog({ data, period, onClose }: { data: AppData; period: string; onClose: () => void }) {
-  const cats = data.categories.filter((c) => !c.archived && (c.kind === 'expense' || c.kind === 'debt')).sort((a, b) => a.sortOrder - b.sortOrder);
-  const [name, setName] = useState('');
-  const [categoryId, setCategoryId] = useState(cats[0]?.id ?? '');
-  const [amount, setAmount] = useState<number | undefined>();
-  const valid = name.trim() !== '' && categoryId !== '' && amount !== undefined;
-  const save = async () => {
-    if (!valid) return;
-    const order = data.items.length ? Math.max(...data.items.map((i) => i.sortOrder)) + 1 : 0;
-    await db.items.add({
-      id: newId(), name: name.trim(), categoryId, defaultAmount: amount!,
-      recurrence: { type: 'once', periodId: period }, startPeriod: period, endPeriod: period, sortOrder: order, archived: false,
-    });
-    onClose();
-  };
-  return (
-    <Dialog open onClose={onClose}>
-      <DialogTitle>大きい出費を追加</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ pt: 1 }}>
-          <TextField label="名前" placeholder="例: 旅行・冷蔵庫の買い替え" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
-          <TextField select label="カテゴリ" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} fullWidth>
-            {cats.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
-          </TextField>
-          <MoneyField label="金額" value={amount} onChange={setAmount} fullWidth />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} color="inherit">キャンセル</Button>
-        <Button onClick={save} variant="contained" disabled={!name.trim() || !categoryId}>追加</Button>
-      </DialogActions>
-    </Dialog>
   );
 }

@@ -22,11 +22,10 @@ export interface Settings {
 }
 
 export interface HomeSettings {
-  /** この先の大きい出費を出す（なければ出す） */
+  // 2026-11-15 に、ホームの「大きい出費」「出金予定」と「ホームに出すもの」の設定をやめた。
+  // 古いデータに残っていても読み込めるように、項目だけ残す（もう使わない）
   big?: boolean;
-  /** 大きい出費として出す金額（なければ 10,000円） */
   bigMinYen?: number;
-  /** 今月の出金予定を出す（なければ出さない） */
   outflows?: boolean;
 }
 
