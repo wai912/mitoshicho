@@ -1,12 +1,9 @@
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
-import SwapVertIcon from '@mui/icons-material/SwapVert';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import {
-  Box, Button, Card, CardContent, CardHeader, Chip, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
+  Box, Button, Card, CardContent, CardHeader, Chip, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
   ListSubheader, Stack, ToggleButton, ToggleButtonGroup, Typography,
 } from '@mui/material';
 import { useState, type ReactNode } from 'react';
@@ -24,6 +21,7 @@ import { AddFab } from '../../components/AddFab';
 import { PageNote } from '../../components/PageNote';
 import { useThemePref } from '../../theme';
 import { moveCategory } from '../../db/ops';
+import { SortableList } from '../../components/SortableList';
 
 function recurrenceText(r: Recurrence, startDay: StartDay) {
   if (r.type === 'monthly') return '毎月';
@@ -52,8 +50,6 @@ export type SettingsPageId = 'basic' | 'appearance' | 'accounts' | 'categories' 
 export function SettingsPage({ page, data, current }: { page: SettingsPageId; data: AppData; current: string }) {
   const [account, setAccount] = useState<Account | 'new' | null>(null);
   const [category, setCategory] = useState<Category | 'new' | null>(null);
-  // カテゴリの並び替えのあいだは、行を押しても編集を開かず、上下のボタンを出す
-  const [sorting, setSorting] = useState(false);
   const [item, setItem] = useState<Item | 'new' | null>(null);
   const [showArchived, setShowArchivedState] = useState(readShowArchived);
   const setShowArchived = (v: boolean) => { setShowArchivedState(v); writeShowArchived(v); };
@@ -118,18 +114,10 @@ export function SettingsPage({ page, data, current }: { page: SettingsPageId; da
         {toggle(accounts)}
       </Section>}
 
-      {/* カテゴリは種類ごとに分けて出す。並び替えは同じ種類の中で */}
+      {/* カテゴリは種類ごとに分けて出す。右のつまみをドラッグして、同じ種類の中で並べ替える */}
       {page === 'categories' && <>
         <PageNote>家計簿アプリのカテゴリ名に合わせておくと、月末の振り返りが楽です。</PageNote>
         {categories.length === 0 && <Card><List dense><Empty>カテゴリを登録してください</Empty></List></Card>}
-        {visible(categories).length > 1 && (
-          <Stack direction="row" justifyContent="flex-end" sx={{ mt: '8px !important', mb: '-8px !important' }}>
-            <Button size="small" variant={sorting ? 'contained' : 'text'} startIcon={sorting ? undefined : <SwapVertIcon />}
-              onClick={() => setSorting(!sorting)}>
-              {sorting ? '完了' : '並び替え'}
-            </Button>
-          </Stack>
-        )}
         {KIND_ORDER.map((kind) => {
           const shown = visible(categories).filter((c) => c.kind === kind);
           if (shown.length === 0) return null;
@@ -137,33 +125,20 @@ export function SettingsPage({ page, data, current }: { page: SettingsPageId; da
           return (
             <Card key={kind}>
               <CardHeader title={KIND_LABEL[kind]} titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }} sx={{ pb: 0 }} />
-              <List dense>
-                {shown.map((c, i) => (
-                  <ListItem key={c.id} disablePadding sx={{ opacity: c.archived ? 0.5 : 1 }}
-                    secondaryAction={sorting ? (
-                      <Stack direction="row">
-                        <IconButton aria-label={`${c.name} を上へ`} disabled={i === 0}
-                          onClick={() => moveCategory(ids, c.id, -1)}><ArrowUpwardIcon /></IconButton>
-                        <IconButton aria-label={`${c.name} を下へ`} disabled={i === shown.length - 1}
-                          onClick={() => moveCategory(ids, c.id, 1)}><ArrowDownwardIcon /></IconButton>
-                      </Stack>
-                    ) : undefined}>
-                    {sorting ? (
-                      <ListItemText primary={c.name} sx={{ px: 2, py: 0.75, pr: 12 }} />
-                    ) : (
-                      <ListItemButton onClick={() => setCategory(c)}>
-                        <ListItemText primary={c.name} />
-                        {c.archived && <ArchivedChip />}
-                      </ListItemButton>
-                    )}
-                  </ListItem>
-                ))}
-              </List>
+              <SortableList items={shown} label={(c) => `${c.name} を動かす`}
+                onMove={(id, to) => moveCategory(ids, id, to)}>
+                {(c) => (
+                  <ListItemButton dense onClick={() => setCategory(c)} sx={{ opacity: c.archived ? 0.5 : 1, pr: 0 }}>
+                    <ListItemText primary={c.name} />
+                    {c.archived && <ArchivedChip />}
+                  </ListItemButton>
+                )}
+              </SortableList>
             </Card>
           );
         })}
         {categories.some((c) => c.archived) && <Card>{toggle(categories)}</Card>}
-        {!sorting && <AddFab onClick={() => setCategory('new')} />}
+        <AddFab onClick={() => setCategory('new')} />
       </>}
 
       {page === 'items' && <Section onAdd={categories.length > 0 ? () => setItem('new') : undefined}
