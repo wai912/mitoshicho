@@ -7,14 +7,14 @@ import {
 } from '@mui/material';
 import { useMemo, useState, type ReactNode } from 'react';
 import { bigExpenses, summarize, type BigExpense, type CategoryRow, type PeriodSummary } from '../../domain/cashflow';
-import { addPeriods, periodLabel, periodRule, periodStart } from '../../domain/period';
+import { addPeriods, periodRule, periodStart } from '../../domain/period';
 import { DRIFT_LABEL, driftHints, type DriftHint } from '../../domain/review';
 import type { AppData, CategoryActual, CategoryKind } from '../../domain/types';
 import { db, newId } from '../../db/db';
 import { yen } from '../../lib/money';
 import { MoneyField } from '../../components/MoneyField';
 import { PeriodNav } from '../../components/PeriodNav';
-import { KITSUNE } from '../../components/Kitsune';
+import { InfoTip } from '../../components/InfoTip';
 import { CategoryItems } from '../budget/parts';
 import { OnceItemDialog } from '../settings/dialogs';
 import { OutflowsCard } from '../home/Outlook';
@@ -46,7 +46,6 @@ export function PlanPage({ data, period, setPeriod, current, menu }: {
   const income = total(['income']);
   const spend = total(['expense', 'debt']);
   const saving = total(['saving']);
-  const over = spend + saving - income;
   const expense = s.categories.filter((c) => c.kind === 'expense');
   const others = s.categories.filter((c) => c.kind !== 'expense');
 
@@ -56,41 +55,21 @@ export function PlanPage({ data, period, setPeriod, current, menu }: {
 
       <Card data-tour="summary">
         <CardContent sx={{ pb: '16px !important' }}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Box component="img" src={KITSUNE.counting} alt="" sx={{ width: 52, flexShrink: 0 }} />
-            <Typography variant="body2" sx={{ lineHeight: 1.8 }}>
-              {periodLabel(period, startDay)}の計画。先月のずれをふまえて、ざっくり決めよう。
-            </Typography>
-          </Stack>
           {/* 「予算」（カードは使う月で数える）と「口座のお金」（カードは引き落とされる月で数える）。設定で選んだほうを大きく、もう一方は1行で */}
-          <Box sx={{ mt: 1.5, pt: 1.5, borderTop: 1.5, borderColor: 'divider', borderTopStyle: 'solid' }}>
-            {focus === 'cash' ? <>
-              <CashMain s={s} />
-              <BudgetLine income={income} spend={spend} saving={saving} />
-            </> : <>
-              <SectionLabel title="予算" note="カードは使う月で数える" />
-              <Stack direction="row" spacing={2} sx={{ mt: 0.75 }}>
-                <Figure label="収入" value={income} />
-                <Figure label="使う予定" value={spend} />
-                <Figure label="積み立て" value={saving} />
-              </Stack>
-            </>}
-            {/* 口座のお金が足りなくなる月は、そちらでまとめて伝える（同じ助言を2回出さない） */}
-            {over > 0 && s.buffer >= 0 && (
-              <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1, lineHeight: 1.7 }}>
-                計画が収入を {yen(over)} こえているよ。積み立てを減らすか、貯金から出すか決めておこう。
-              </Typography>
-            )}
-            {focus === 'cash' ? (s.buffer < 0 && <ShortNote s={s} />) : <CashLine s={s} />}
-          </Box>
+          {focus === 'cash' ? <>
+            <CashMain s={s} />
+            <BudgetLine income={income} spend={spend} saving={saving} />
+          </> : <>
+            <BudgetMain income={income} spend={spend} saving={saving} />
+            <CashLine s={s} />
+          </>}
         </CardContent>
       </Card>
 
       <Card data-tour="plan-big">
-        <CardHeader title="この月の大きい出費" titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
-          subheader="旅行・家電・年払いなど。先に入れておくと安心" subheaderTypographyProps={{ variant: 'caption' }} sx={{ pb: 0 }} />
+        <CardHeader title="この月の大きい出費" titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }} sx={{ pb: 0 }} />
         {big.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 1 }}>この月はないよ。</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 1 }}>なし</Typography>
         ) : (
           <ScheduleList rows={big.map((b) => ({
             key: b.item.id, date: b.date, label: `${periodStart(period, startDay).getMonth() + 1}月`,
@@ -105,8 +84,7 @@ export function PlanPage({ data, period, setPeriod, current, menu }: {
       </Card>
 
       <Card data-tour="plan-categories">
-        <CardHeader title="カテゴリごとの予算" titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
-          subheader="開くと、項目ごとにこの月だけの金額に変えられるよ" subheaderTypographyProps={{ variant: 'caption' }} sx={{ pb: 0 }} />
+        <CardHeader title="カテゴリごとの予算" titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }} sx={{ pb: 0 }} />
         <CardContent sx={{ pt: 1, pb: '8px !important' }}>
           {expense.map((c) => <CategoryRowView key={c.category.id} row={c} last={lastMonth.get(c.category.id)} hint={hints.get(c.category.id)} period={period} data={data} />)}
           {others.length > 0 && (
@@ -130,15 +108,71 @@ const cashResult = (s: PeriodSummary) => (s.buffer < 0 ? `${yen(-s.buffer)} 足�
 const cashFormula = (s: PeriodSummary) =>
   `収入 ${yen(s.incomeTotal)} − 口座から出るお金 ${yen(s.directOutTotal)} − カードの引落 ${yen(s.cardBillTotal)}`
   + (s.receivableTotal > 0 ? ` + 立替の回収 ${yen(s.receivableTotal)}` : '');
+const BUDGET_NOTE = 'カードで払うものは、使う月で数えます。';
+const CASH_NOTE = 'カードで払うものは、引き落とされる月で数えます。給料日のチェックの「残るお金」と同じ計算です。';
+const OVER_TIP = '積み立てを減らすか、貯金から出すか決めておこう。';
+const SHORT_TIP = 'この月は出ていくお金が多めです。積み立てを少し減らすか、貯金から出すか決めておこう。';
+
+/** 予算を大きく（設定で「予算」を選んだとき）。3つの数字と、収入にどれだけ収まっているかのバー */
+function BudgetMain({ income, spend, saving }: { income: number; spend: number; saving: number }) {
+  return (
+    <Box>
+      <SectionLabel title="予算" note={BUDGET_NOTE} />
+      <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
+        <Figure label="収入" value={income} />
+        <Figure label="使う予定" value={spend} dot="primary.main" />
+        <Figure label="積み立て" value={saving} dot="success.main" />
+      </Stack>
+      <PlanBar income={income} spend={spend} saving={saving} />
+    </Box>
+  );
+}
+
+/**
+ * 使う予定と積み立てが、収入に収まっているかを1本のバーで。
+ * 収入をこえた分は、バーの外にはみ出した形（しま模様）で見せる。責める色（赤）は使わない
+ */
+function PlanBar({ income, spend, saving }: { income: number; spend: number; saving: number }) {
+  const used = spend + saving;
+  const max = Math.max(income, used, 1);
+  const over = used - income;
+  const pct = (v: number) => `${(v / max) * 100}%`;
+  return (
+    <Box sx={{ mt: 1.25 }}>
+      <Box role="img" aria-label={over > 0 ? `収入を ${yen(over)} こえている` : '収入の中に収まっている'}
+        sx={{ position: 'relative', height: 10, borderRadius: 5, bgcolor: 'soft', overflow: 'hidden' }}>
+        <Box sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: pct(Math.min(spend, max)), bgcolor: 'primary.main' }} />
+        <Box sx={{ position: 'absolute', left: pct(spend), top: 0, bottom: 0, width: pct(saving), bgcolor: 'success.main' }} />
+        {over > 0 && (
+          <Box sx={{
+            position: 'absolute', left: pct(income), top: 0, bottom: 0, right: 0,
+            backgroundImage: (t) => `repeating-linear-gradient(135deg, transparent 0 4px, ${t.palette.background.paper} 4px 7px)`,
+          }} />
+        )}
+        {over > 0 && <Box sx={{ position: 'absolute', left: pct(income), top: -2, bottom: -2, width: 2, bgcolor: 'text.primary' }} />}
+      </Box>
+      {/* 収まっているときは何も書かない（余りを細かく見せて合わせさせない） */}
+      {over > 0 && (
+        <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mt: 0.5 }}>
+          <Typography variant="body2" color="warning.main" fontWeight={700}>収入を {yen(over)} こえている</Typography>
+          <InfoTip label="こえたときは" text={OVER_TIP} />
+        </Stack>
+      )}
+    </Box>
+  );
+}
 
 /** 口座のお金を大きく（設定で「口座のお金」を選んだとき）。給料日のチェックの「残るお金」と同じ計算 */
 function CashMain({ s }: { s: PeriodSummary }) {
   return (
     <Box>
-      <SectionLabel title="口座のお金" note="カードは引き落とされる月で数える" />
-      <Typography variant="h5" component="p" fontWeight={900} color={s.buffer < 0 ? 'error.main' : 'text.primary'} sx={{ mt: 0.5 }}>
-        {cashResult(s)}
-      </Typography>
+      <SectionLabel title="口座のお金" note={CASH_NOTE} />
+      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.25 }}>
+        <Typography variant="h5" component="p" fontWeight={900} color={s.buffer < 0 ? 'error.main' : 'text.primary'}>
+          {cashResult(s)}
+        </Typography>
+        {s.buffer < 0 && <InfoTip label="足りないときは" text={SHORT_TIP} />}
+      </Stack>
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.25, lineHeight: 1.7 }}>{cashFormula(s)}</Typography>
     </Box>
   );
@@ -147,60 +181,52 @@ function CashMain({ s }: { s: PeriodSummary }) {
 /** 予算を1行で（設定で「口座のお金」を選んだとき） */
 function BudgetLine({ income, spend, saving }: { income: number; spend: number; saving: number }) {
   return (
-    <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1.25, pt: 1, borderTop: 1, borderColor: 'divider', lineHeight: 1.7 }}>
-      <Box component="span" fontWeight={900} color="text.primary" sx={{ mr: 0.75 }}>予算</Box>
-      収入 {yen(income)}・使う予定 {yen(spend)}・積み立て {yen(saving)}（カードは使う月で数える）
-    </Typography>
+    <Box sx={{ mt: 1.5, pt: 1.25, borderTop: 1, borderColor: 'divider' }}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <SectionLabel title="予算" note={BUDGET_NOTE} />
+        <Typography variant="body2" color="text.secondary">収入 {yen(income)}</Typography>
+      </Stack>
+      <PlanBar income={income} spend={spend} saving={saving} />
+    </Box>
   );
 }
 
 /**
  * 口座のお金を1行で（設定で「予算」を選んだとき）。
- * 足りなくなる月だけは、見のがさないように目立たせて、ひとこと添える
+ * 足りなくなる月だけは、見のがさないように色を付ける
  */
 function CashLine({ s }: { s: PeriodSummary }) {
-  if (s.buffer < 0) return <ShortNote s={s} withResult />;
+  const short = s.buffer < 0;
   return (
-    <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1.25, pt: 1, borderTop: 1, borderColor: 'divider', lineHeight: 1.7 }}>
-      <Box component="span" fontWeight={900} color="text.primary" sx={{ mr: 0.75 }}>口座のお金</Box>
-      {cashResult(s)}（カードは引き落とされる月で数える）
-    </Typography>
+    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}
+      sx={{ mt: 1.5, pt: 1.25, borderTop: 1, borderColor: 'divider', ...(short && { mx: -1, px: 1, pb: 1, borderRadius: '8px', bgcolor: 'soft', borderTop: 0 }) }}>
+      <SectionLabel title="口座のお金" note={`${CASH_NOTE}\n${cashFormula(s)}`} />
+      <Stack direction="row" alignItems="center" spacing={0.25} sx={{ flexShrink: 0 }}>
+        <Typography fontWeight={900} color={short ? 'error.main' : 'text.primary'}>{cashResult(s)}</Typography>
+        {short && <InfoTip label="足りないときは" text={SHORT_TIP} />}
+      </Stack>
+    </Stack>
   );
 }
 
-/** 口座のお金が足りなくなる月のひとこと */
-function ShortNote({ s, withResult }: { s: PeriodSummary; withResult?: boolean }) {
-  return (
-    <Box sx={{ mt: 1.25, p: 1.25, borderRadius: '8px', bgcolor: 'soft' }}>
-      {withResult && <>
-        <Stack direction="row" justifyContent="space-between" alignItems="baseline" spacing={1}>
-          <Typography variant="body2" fontWeight={900}>口座のお金</Typography>
-          <Typography fontWeight={900} color="error.main" sx={{ flexShrink: 0 }}>{cashResult(s)}</Typography>
-        </Stack>
-        <Typography variant="caption" color="text.secondary" component="p" sx={{ fontSize: 11 }}>カードは引き落とされる月で数える</Typography>
-        <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5, lineHeight: 1.7 }}>{cashFormula(s)}</Typography>
-      </>}
-      <Typography variant="caption" component="p" sx={{ mt: withResult ? 0.5 : 0, lineHeight: 1.7 }}>
-        この月は出ていくお金が多めで、口座のお金が足りなくなりそう。積み立てを少し減らすか、貯金から出すか決めておこう。
-      </Typography>
-    </Box>
-  );
-}
-
+/** 見出しと、その補足をしまった「ⓘ」 */
 function SectionLabel({ title, note }: { title: string; note: string }) {
   return (
-    <Typography variant="body2" component="p" sx={{ minWidth: 0 }}>
-      <Box component="span" fontWeight={900}>{title}</Box>
-      <Box component="span" sx={{ color: 'text.secondary', fontSize: 11, ml: 0.75 }}>{note}</Box>
-    </Typography>
+    <Stack direction="row" alignItems="center" spacing={0.25} sx={{ minWidth: 0 }}>
+      <Typography variant="body2" fontWeight={900}>{title}</Typography>
+      <InfoTip label={`${title}の数え方`} text={note} />
+    </Stack>
   );
 }
 
-function Figure({ label, value }: { label: string; value: number }) {
+function Figure({ label, value, dot }: { label: string; value: number; dot?: string }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography variant="caption" color="text.secondary">{label}</Typography>
-      <Typography fontWeight={700} sx={{ whiteSpace: 'nowrap' }}>{yen(value)}</Typography>
+      <Stack direction="row" alignItems="center" spacing={0.5}>
+        {dot && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: dot, flexShrink: 0 }} />}
+        <Typography variant="caption" color="text.secondary">{label}</Typography>
+      </Stack>
+      <Typography fontWeight={700} sx={{ whiteSpace: 'nowrap', fontSize: 17 }}>{yen(value)}</Typography>
     </Box>
   );
 }
@@ -222,7 +248,7 @@ function CategoryRowView({ row, last, hint, period, data }: {
             <Typography fontWeight={700} sx={{ flexShrink: 0, mr: 1 }}>{yen(row.planned)}</Typography>
           </Stack>
           {last && (
-            <Chip size="small" variant="outlined" sx={{ mt: 0.5, height: 22, fontSize: 11, maxWidth: '100%' }}
+            <Chip size="small" variant="outlined" sx={{ mt: 0.5, height: 24, fontSize: 12, maxWidth: '100%' }}
               label={`先月 ${yen(last.amount)}${last.driftKind ? `・${DRIFT_LABEL[last.driftKind]}` : ''}${last.memo ? `「${last.memo}」` : ''}`} />
           )}
         </Box>
