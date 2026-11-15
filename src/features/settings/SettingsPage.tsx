@@ -1,9 +1,12 @@
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import SwapVertIcon from '@mui/icons-material/SwapVert';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import {
-  Box, Button, Card, CardContent, CardHeader, Chip, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
+  Box, Button, Card, CardContent, CardHeader, Chip, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
   ListSubheader, Stack, ToggleButton, ToggleButtonGroup, Typography,
 } from '@mui/material';
 import { useState, type ReactNode } from 'react';
@@ -20,6 +23,7 @@ import { PlanFocusFields } from './PlanFocusFields';
 import { AddFab } from '../../components/AddFab';
 import { PageNote } from '../../components/PageNote';
 import { useThemePref } from '../../theme';
+import { moveCategory } from '../../db/ops';
 
 function recurrenceText(r: Recurrence, startDay: StartDay) {
   if (r.type === 'monthly') return '毎月';
@@ -45,6 +49,8 @@ export type SettingsPageId = 'basic' | 'appearance' | 'accounts' | 'categories' 
 export function SettingsPage({ page, data, current }: { page: SettingsPageId; data: AppData; current: string }) {
   const [account, setAccount] = useState<Account | 'new' | null>(null);
   const [category, setCategory] = useState<Category | 'new' | null>(null);
+  // カテゴリの並び替えのあいだは、行を押しても編集を開かず、上下のボタンを出す
+  const [sorting, setSorting] = useState(false);
   const [item, setItem] = useState<Item | 'new' | null>(null);
   const [showArchived, setShowArchivedState] = useState(readShowArchived);
   const setShowArchived = (v: boolean) => { setShowArchivedState(v); writeShowArchived(v); };
@@ -109,17 +115,37 @@ export function SettingsPage({ page, data, current }: { page: SettingsPageId; da
         {toggle(accounts)}
       </Section>}
 
-      {page === 'categories' && <Section onAdd={() => setCategory('new')}
+      {page === 'categories' && <Section onAdd={sorting ? undefined : () => setCategory('new')}
         note="家計簿アプリのカテゴリ名に合わせておくと、月末の振り返りが楽です。">
+        {visible(categories).length > 1 && (
+          <Stack direction="row" justifyContent="flex-end" sx={{ px: 1, pt: 1 }}>
+            <Button size="small" variant={sorting ? 'contained' : 'text'} startIcon={sorting ? undefined : <SwapVertIcon />}
+              onClick={() => setSorting(!sorting)}>
+              {sorting ? '完了' : '並び替え'}
+            </Button>
+          </Stack>
+        )}
         <List dense>
           {categories.length === 0 && <Empty>カテゴリを登録してください</Empty>}
-          {visible(categories).map((c) => (
-            <ListItem key={c.id} disablePadding sx={{ opacity: c.archived ? 0.5 : 1 }}>
-              <ListItemButton onClick={() => setCategory(c)}>
-                <ListItemText primary={c.name} />
-                {c.archived && <ArchivedChip />}
-                <Typography variant="caption" color="text.secondary">{KIND_LABEL[c.kind]}</Typography>
-              </ListItemButton>
+          {visible(categories).map((c, i, shown) => (
+            <ListItem key={c.id} disablePadding sx={{ opacity: c.archived ? 0.5 : 1 }}
+              secondaryAction={sorting ? (
+                <Stack direction="row">
+                  <IconButton aria-label={`${c.name} を上へ`} disabled={i === 0}
+                    onClick={() => moveCategory(shown.map((x) => x.id), c.id, -1)}><ArrowUpwardIcon /></IconButton>
+                  <IconButton aria-label={`${c.name} を下へ`} disabled={i === shown.length - 1}
+                    onClick={() => moveCategory(shown.map((x) => x.id), c.id, 1)}><ArrowDownwardIcon /></IconButton>
+                </Stack>
+              ) : undefined}>
+              {sorting ? (
+                <ListItemText primary={c.name} sx={{ px: 2, py: 0.75, pr: 12 }} />
+              ) : (
+                <ListItemButton onClick={() => setCategory(c)}>
+                  <ListItemText primary={c.name} />
+                  {c.archived && <ArchivedChip />}
+                  <Typography variant="caption" color="text.secondary">{KIND_LABEL[c.kind]}</Typography>
+                </ListItemButton>
+              )}
             </ListItem>
           ))}
         </List>
