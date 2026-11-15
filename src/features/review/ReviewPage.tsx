@@ -1,11 +1,11 @@
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import TuneIcon from '@mui/icons-material/Tune';
 import {
-  Accordion, AccordionDetails, AccordionSummary, Avatar, Box, Button, Card, CardContent, Divider, IconButton, Stack, Typography,
+  Accordion, AccordionDetails, AccordionSummary, Avatar, Box, Button, Card, CardContent, Chip, Divider, IconButton, Stack, Typography,
 } from '@mui/material';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { summarize } from '../../domain/cashflow';
-import { addPeriods, periodLabel, periodRule } from '../../domain/period';
+import { addPeriods, periodRule } from '../../domain/period';
 import { driftHints, driftMinYen, monthDrifts, REVIEW_DONE_KEY, reviewStatus } from '../../domain/review';
 import type { AppData } from '../../domain/types';
 import { toggleCheck } from '../../db/ops';
@@ -13,6 +13,8 @@ import { yen } from '../../lib/money';
 import { PeriodNav } from '../../components/PeriodNav';
 import { Confetti } from '../../components/Confetti';
 import { KITSUNE } from '../../components/Kitsune';
+import { InfoTip } from '../../components/InfoTip';
+import { FitBar, Figure } from '../../components/FitBar';
 import { ActualRow, CardBills } from '../budget/parts';
 import { DriftInline, HintsCard } from './Drift';
 
@@ -60,22 +62,24 @@ export function ReviewPage({ data, period, setPeriod, current, menu }: {
             </Box>
           </CardContent>
         </Card>
-      ) : (
+      ) : future ? (
         <Card data-tour="review-steps">
           <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: '16px !important' }}>
             <Box component="img" src={KITSUNE.looking} alt="" sx={{ width: 52, flexShrink: 0 }} />
-            <Typography variant="body2" sx={{ lineHeight: 1.8 }}>
-              {future ? 'この月はまだ始まっていないよ。月末になったらふりかえろう。'
-                : `${periodLabel(period, startDay)}のふりかえり。合計を入れて、計画とずれたところの理由を考えよう。`}
-            </Typography>
+            <Typography variant="body2" sx={{ lineHeight: 1.8 }}>まだ始まっていない月だよ。</Typography>
           </CardContent>
         </Card>
+      ) : (
+        <Progress entered={entered} total={expense.length} drifts={drifts.length} untagged={status.untagged}
+          actual={expense.reduce((a, c) => a + (c.actual ?? 0), 0)} planned={expense.reduce((a, c) => a + c.planned, 0)} />
       )}
 
       {/* 実績を入れて、ずれを考える */}
-      <Section title="実績を入れて、ずれを考える" done={allEntered && status.untagged === 0}
-        sub={`家計簿アプリのカテゴリ別の合計を入れよう（${entered} / ${expense.length}）。計画と${yen(minYen)}以上ずれたら、理由とひとことメモを残そう`}
-        action={<IconButton size="small" aria-label="表示するずれの設定" href="#prefs-review" sx={{ color: 'text.secondary' }}><TuneIcon fontSize="small" /></IconButton>}>
+      <Section title="カテゴリごとの実績" done={allEntered && status.untagged === 0}
+        action={<>
+          <InfoTip label="実績の入れ方" text={`家計簿アプリのカテゴリ別の合計を入れます。\n計画と ${yen(minYen)} 以上ずれたカテゴリには、理由とメモの欄が出ます。`} />
+          <IconButton size="small" aria-label="表示するずれの設定" href="#prefs-review" sx={{ color: 'text.secondary' }}><TuneIcon fontSize="small" /></IconButton>
+        </>}>
         {expense.map((c, i) => {
           const d = driftOf.get(c.category.id);
           return (
@@ -111,25 +115,17 @@ export function ReviewPage({ data, period, setPeriod, current, menu }: {
 
       {!status.done && !future && (
         <Button variant="contained" size="large" disabled={!allEntered} onClick={() => toggleCheck(period, REVIEW_DONE_KEY, true)}>
-          ふりかえり完了
+          {allEntered ? 'ふりかえり完了' : `あと ${expense.length - entered} カテゴリで完了`}
         </Button>
-      )}
-      {!status.done && !future && !allEntered && (
-        <Typography variant="caption" color="text.secondary" textAlign="center" sx={{ mt: -1 }}>
-          実績を全部入れると、完了にできるよ（あと {expense.length - entered} カテゴリ）
-        </Typography>
       )}
 
       {s.cardBills.length > 0 && <CardBills bills={s.cardBills} period={period} data={data} />}
-      <Typography variant="caption" color="text.secondary" textAlign="center">
-        支出の実績 {yen(expense.reduce((a, c) => a + (c.actual ?? 0), 0))} / 予算 {yen(expense.reduce((a, c) => a + c.planned, 0))}
-      </Typography>
     </Stack>
   );
 }
 
 function Section({ title, sub, done, action, children }: {
-  title: string; sub: string; done: boolean; action?: ReactNode; children: ReactNode;
+  title: string; sub?: string; done: boolean; action?: ReactNode; children: ReactNode;
 }) {
   return (
     <Card>
@@ -139,8 +135,35 @@ function Section({ title, sub, done, action, children }: {
           <Typography variant="subtitle1" fontWeight={900} sx={{ flex: 1 }}>{title}</Typography>
           {action}
         </Stack>
-        <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.75, mb: 1, lineHeight: 1.7 }}>{sub}</Typography>
+        {sub ? <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.75, mb: 1, lineHeight: 1.7 }}>{sub}</Typography>
+          : <Box sx={{ mb: 0.5 }} />}
         {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * 上のまとめ（計画のまとめと同じ形）: 予算・使った・目立つずれの数字と、予算に収まっているかのバー。
+ * 何カテゴリ入れたかは見出しの横に
+ */
+function Progress({ entered, total, drifts, untagged, actual, planned }: {
+  entered: number; total: number; drifts: number; untagged: number; actual: number; planned: number;
+}) {
+  return (
+    <Card data-tour="review-steps">
+      <CardContent sx={{ pb: '16px !important' }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+          <Typography variant="body2" fontWeight={900}>支出</Typography>
+          <Chip size="small" variant="outlined" color={entered === total ? 'success' : 'default'}
+            label={`入力 ${entered} / ${total}`} sx={{ height: 24, fontSize: 12, fontWeight: 700 }} />
+        </Stack>
+        <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
+          <Figure label="予算" value={planned} />
+          <Figure label="使った" value={actual} dot="primary.main" />
+          <Figure label="目立つずれ" value={`${drifts}件`} sub={untagged > 0 ? `種類まだ ${untagged}` : undefined} />
+        </Stack>
+        <FitBar base={planned} segments={[{ value: actual, color: 'primary.main' }]} overText={(o) => `予算を ${yen(o)} こえた`} />
       </CardContent>
     </Card>
   );

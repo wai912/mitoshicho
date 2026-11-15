@@ -7,7 +7,6 @@ import EventRepeatIcon from '@mui/icons-material/EventRepeat';
 import EditCalendarIcon from '@mui/icons-material/EditCalendar';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import HomeIcon from '@mui/icons-material/Home';
-import DashboardCustomizeOutlinedIcon from '@mui/icons-material/DashboardCustomizeOutlined';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
@@ -61,7 +60,6 @@ export const MENU: MenuGroup[] = [
     title: 'ホーム',
     icon: <HomeIcon />,
     entries: [
-      { route: 'prefs-home', label: 'ホームに出すもの', icon: <DashboardCustomizeOutlinedIcon />, tone: 'info' },
     ],
   },
   {

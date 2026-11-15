@@ -1,7 +1,7 @@
 // 期ごとの集計。スプシの SUM 手書きをすべてここで置き換える（純粋関数）。
 import { shiftBusinessDay } from './holidays';
 import { addPeriods, comparePeriods, dateInPeriod, dayOf, lastDayBefore, parseISODate, parsePeriod, periodRule } from './period';
-import type { Account, AppData, Category, CategoryActual, CategoryKind, ChecklistTemplate, Entry, Item, Settings } from './types';
+import type { Account, AppData, Category, CategoryActual, CategoryKind, ChecklistTemplate, Entry, Item } from './types';
 
 /** その月のいつもの金額（途中からの金額の変更を反映。月ごとの上書きは含まない） */
 export function amountFor(item: Item, pid: string): number {
@@ -378,60 +378,7 @@ export function cardTodos(data: AppData, today: Date, currentPeriod: string): Ca
   return todos;
 }
 
-/** 先の予定として目立たせる出費。年払い・数か月ごと・1回のみの項目と、いつもより多くしたその月だけの予算 */
-export interface BigExpense {
-  periodId: string;
-  item: Item;
-  category: Category;
-  amount: number;
-  /** その月だけの予算に付けたメモ（例: 旅行） */
-  memo?: string;
-  /** いつもの金額（その月だけ増やしたとき）。いつもは出ない月なら 0 */
-  usual?: number;
-  /** 入出金日が決まっていれば、その日付 */
-  date?: Date;
-  reason: 'yearly' | 'interval' | 'once' | 'override';
-}
-
-export function bigExpenses(data: AppData, pid: string, idx = buildIndex(data)): BigExpense[] {
-  const out: BigExpense[] = [];
-  const startDay = periodRule(data.settings);
-  for (const r of itemRows(data, pid, idx)) {
-    if (r.kind === 'income' || r.kind === 'saving' || !r.planned) continue;
-    const rec = r.item.recurrence;
-    const usual = itemOccurs(r.item, pid) ? amountFor(r.item, pid) : 0;
-    const date = r.item.day !== undefined ? dateInPeriod(pid, startDay, r.item.day) : undefined;
-    const base = { periodId: pid, item: r.item, category: r.category, amount: r.planned, memo: r.memo, date };
-    if (r.hasOverride && r.planned > usual) out.push({ ...base, usual, reason: 'override' });
-    else if (rec.type === 'yearly' || rec.type === 'once') out.push({ ...base, reason: rec.type });
-    else if (rec.type === 'interval' && rec.months >= 3) out.push({ ...base, reason: 'interval' });
-  }
-  return out.sort((a, b) => (a.date?.getTime() ?? Infinity) - (b.date?.getTime() ?? Infinity));
-}
-
 /** 口座から出ていくお金を日付順に（入出金日のある項目と、カードの引落） */
 export function outflows(s: PeriodSummary): TimelineEvent[] {
   return s.timeline.filter((e) => e.amount < 0);
-}
-
-export const DEFAULT_BIG_MIN_YEN = 10000;
-
-/** ホームに出す、この先の大きい出費。設定の金額以上のものだけ */
-export function homeBigExpenses(months: OutlookMonth[], settings: Settings): BigExpense[] {
-  const min = settings.home?.bigMinYen ?? DEFAULT_BIG_MIN_YEN;
-  return months.flatMap((m) => m.big).filter((b) => b.amount >= min);
-}
-
-export interface OutlookMonth {
-  periodId: string;
-  big: BigExpense[];
-}
-
-/** current から months か月分の、大きい出費の予定 */
-export function outlook(data: AppData, current: string, months = 12): OutlookMonth[] {
-  const idx = buildIndex(data);
-  return Array.from({ length: months }, (_, i) => {
-    const pid = addPeriods(current, i);
-    return { periodId: pid, big: bigExpenses(data, pid, idx) };
-  });
 }

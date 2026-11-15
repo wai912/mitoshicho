@@ -15,6 +15,7 @@ import { db, newId } from '../../db/db';
 import { signedYen, yen } from '../../lib/money';
 import { MoneyField } from '../../components/MoneyField';
 import { BudgetBar } from '../../components/BudgetBar';
+import { InfoTip } from '../../components/InfoTip';
 
 // 計画とふりかえりの画面で使う部品
 /** カード請求: この月に引き落とされる分。確定した日に請求額を入れる（空欄のあいだは予測で計算） */
@@ -23,10 +24,11 @@ export function CardBills({ bills, period, data }: { bills: CardBillRow[]; perio
   return (
     <Card>
       <CardContent sx={{ pb: '8px !important' }}>
-        <Typography variant="subtitle1" fontWeight={700}>カード請求</Typography>
-        <Typography variant="caption" color="text.secondary" display="block">
-          この月に引き落とされる分。請求額が確定したら入力してください（空欄のあいだは予測で計算します）。支出の実績には含まれません。
-        </Typography>
+        <Stack direction="row" alignItems="center" spacing={0.25}>
+          <Typography variant="subtitle1" fontWeight={700}>カード請求</Typography>
+          <InfoTip label="カード請求について"
+            text={'この月に引き落とされる分です。\n請求額が確定したら入れてください。空欄のあいだは予測（薄い数字）で計算します。\n支出の実績には含まれません。'} />
+        </Stack>
         {bills.map((b, i) => {
           const st = BILL_STATUS[billStatus(b)];
           return (
@@ -37,10 +39,10 @@ export function CardBills({ bills, period, data }: { bills: CardBillRow[]; perio
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography noWrap>
                       {b.card.name}
-                      <Chip label={st.label} color={st.color} size="small" variant="outlined" sx={{ ml: 0.5, height: 18, fontSize: 10 }} />
+                      <Chip label={st.label} color={st.color} size="small" variant="outlined" sx={{ ml: 0.75, height: 22, fontSize: 12 }} />
                     </Typography>
                     <Typography variant="caption" color="text.secondary" display="block">
-                      {billDatesText(b) || '日付未設定'}・予測 {yen(b.forecast)}
+                      {billDatesText(b) || '日付未設定'}
                     </Typography>
                   </Box>
                   <MoneyField value={b.actual} placeholder={b.forecast} sx={{ width: 132, flexShrink: 0 }} ariaLabel={`${b.card.name} の請求額`}
@@ -51,7 +53,7 @@ export function CardBills({ bills, period, data }: { bills: CardBillRow[]; perio
                 </Stack>
                 {b.diff !== undefined && b.diff !== 0 && (
                   <Typography variant="caption" color={b.diff > 0 ? 'error' : 'success.main'}>
-                    予測との差 {signedYen(b.diff)}{b.diff > 0 ? '（予測より多い）' : '（予測より少ない）'}
+                    予測 {yen(b.forecast)} より {signedYen(b.diff)}
                   </Typography>
                 )}
               </Box>
@@ -115,7 +117,7 @@ export function CategoryItems({ row, period, data }: { row: CategoryRow; period:
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="body2" noWrap>
                 {r.item.name}
-                {r.viaCard && <Chip label="カード" size="small" variant="outlined" sx={{ ml: 0.5, height: 18, fontSize: 10 }} />}
+                {r.viaCard && <Chip label="カード" size="small" variant="outlined" sx={{ ml: 0.75, height: 22, fontSize: 12 }} />}
               </Typography>
               {r.item.recurrence.type === 'once' && <Typography variant="caption" color="primary" display="block">この月だけ</Typography>}
               {r.hasOverride && r.item.recurrence.type !== 'once' && (

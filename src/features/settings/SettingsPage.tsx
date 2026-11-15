@@ -16,7 +16,6 @@ import { AccountDialog, CategoryDialog, ChecklistDialog, ItemDialog, KIND_LABEL 
 import { DataSection } from './DataSection';
 import { PaydayFields } from './PaydayFields';
 import { DriftFields } from '../review/Drift';
-import { HomeFields } from './HomeFields';
 import { PlanFocusFields } from './PlanFocusFields';
 import { AddFab } from '../../components/AddFab';
 import { PageNote } from '../../components/PageNote';
@@ -40,7 +39,7 @@ function nextChange(i: Item, current: string) {
   return i.amountChanges?.find((c) => comparePeriods(c.from, current) > 0);
 }
 
-export type SettingsPageId = 'basic' | 'appearance' | 'accounts' | 'categories' | 'items' | 'checklist' | 'review' | 'home' | 'plan' | 'import' | 'backup';
+export type SettingsPageId = 'basic' | 'appearance' | 'accounts' | 'categories' | 'items' | 'checklist' | 'review' | 'plan' | 'import' | 'backup';
 
 /** メニューから開く設定の各ページ。1ページに1つの項目だけを出す */
 export function SettingsPage({ page, data, current }: { page: SettingsPageId; data: AppData; current: string }) {
@@ -70,10 +69,6 @@ export function SettingsPage({ page, data, current }: { page: SettingsPageId; da
 
       {page === 'plan' && <Section note="選ばなかったほうも、下に1行で出ます。口座のお金が足りなくなる月は、どちらを選んでもお知らせします。">
         <CardContent><PlanFocusFields settings={s} /></CardContent>
-      </Section>}
-
-      {page === 'home' && <Section>
-        <CardContent><HomeFields settings={s} /></CardContent>
       </Section>}
 
       {page === 'review' && <Section>
