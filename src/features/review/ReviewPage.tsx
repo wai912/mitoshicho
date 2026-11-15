@@ -15,7 +15,7 @@ import { Confetti } from '../../components/Confetti';
 import { KITSUNE } from '../../components/Kitsune';
 import { InfoTip } from '../../components/InfoTip';
 import { FitBar, Figure } from '../../components/FitBar';
-import { ActualRow, CardBills } from '../budget/parts';
+import { ActualRow } from '../budget/parts';
 import { DriftInline, HintsCard } from './Drift';
 
 /** ふりかえり: 実績を入れて、ずれを考える → 改善のヒント → 完了 */
@@ -119,7 +119,6 @@ export function ReviewPage({ data, period, setPeriod, current, menu }: {
         </Button>
       )}
 
-      {s.cardBills.length > 0 && <CardBills bills={s.cardBills} period={period} data={data} />}
     </Stack>
   );
 }

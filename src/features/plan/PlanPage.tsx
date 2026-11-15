@@ -12,7 +12,7 @@ import { yen } from '../../lib/money';
 import { PeriodNav } from '../../components/PeriodNav';
 import { InfoTip } from '../../components/InfoTip';
 import { FitBar, Figure } from '../../components/FitBar';
-import { CategoryItems } from '../budget/parts';
+import { CardBills, CategoryItems } from '../budget/parts';
 import { OutflowsCard } from '../home/Outlook';
 
 /** 計画: カテゴリごとの予算を、先月のずれをふまえてざっくり決める。下に出金予定 */
@@ -68,6 +68,9 @@ export function PlanPage({ data, period, setPeriod, current, menu }: {
           )}
         </CardContent>
       </Card>
+
+      {/* カードの請求額は月の途中で確定するので、計画で入れる（口座のお金と出金予定にすぐ効く） */}
+      {s.cardBills.length > 0 && <CardBills bills={s.cardBills} period={period} data={data} />}
 
       <OutflowsCard summary={s} title="出金予定" />
 
