@@ -1,7 +1,6 @@
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import SaveAltIcon from '@mui/icons-material/SaveAlt';
 import TuneIcon from '@mui/icons-material/Tune';
 import { Box, Button, Card, CardHeader, List, ListItemButton, ListItemIcon, ListItemText, Stack, Typography } from '@mui/material';
 import { useMemo, useState, type ReactNode } from 'react';
@@ -120,14 +119,11 @@ export function HomePage({ data, current, onOpenBudget, onOpenPlan, onOpenPayday
   );
 }
 
-/** お知らせ: カードの請求額の確定、回収予定を過ぎた立替、バックアップ。あるときだけ出す */
+/** お知らせ: カードの請求額の確定、回収予定を過ぎた立替。あるときだけ出す（バックアップのお知らせは 2026-11-15 になくした） */
 function Notices({ data, current, onCardTodo }: { data: AppData; current: string; onCardTodo: (t: CardTodo) => void }) {
   const todos = useMemo(() => cardTodos(data, new Date(), current), [data, current]);
   const pending = data.receivables.filter((r) => !r.receivedAt && r.expectedPeriod <= current);
-  const backupDays = data.settings.lastBackupAt
-    ? Math.floor((Date.now() - new Date(data.settings.lastBackupAt).getTime()) / 86400000) : undefined;
-  const needBackup = backupDays === undefined || backupDays >= 30;
-  if (todos.length === 0 && pending.length === 0 && !needBackup) return null;
+  if (todos.length === 0 && pending.length === 0) return null;
 
   return (
     <Card data-tour="notices">
@@ -141,10 +137,6 @@ function Notices({ data, current, onCardTodo }: { data: AppData; current: string
         {pending.length > 0 && (
           <Notice icon={<ReceiptLongIcon color="warning" />} primary="回収予定を過ぎた立替・精算があるよ"
             secondary={`${yen(pending.reduce((a, r) => a + r.amount, 0))}（${pending.length}件）`} href="#receivables" />
-        )}
-        {needBackup && (
-          <Notice icon={<SaveAltIcon color="action" />} primary="バックアップを保存しよう"
-            secondary={backupDays === undefined ? 'まだ保存していないよ' : `前回から ${backupDays} 日`} href="#prefs-backup" />
         )}
       </List>
     </Card>
