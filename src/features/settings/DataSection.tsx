@@ -6,19 +6,17 @@ import { useEffect, useRef, useState } from 'react';
 import type { AppData } from '../../domain/types';
 import { db } from '../../db/db';
 import { clearAll, downloadBackup, exportJson, importJson } from '../../db/backup';
-import { SampleDataDialog } from '../../components/SampleDataDialog';
 import { confirmDialog } from '../../components/ConfirmDialog';
 import { ImportSheetDialog } from './ImportSheetDialog';
 import { PageNote } from '../../components/PageNote';
 
-/** part="import": スプレッドシートからの取り込み、part="backup": バックアップ・復元・サンプル・全削除 */
+/** part="import": スプレッドシートからの取り込み、part="backup": バックアップ・復元・全削除 */
 export function DataSection({ data, current, part }: { data: AppData; current: string; part: 'import' | 'backup' }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [persisted, setPersisted] = useState<boolean | null>(null);
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
   const [textMode, setTextMode] = useState<'export' | 'import' | null>(null);
   const [importing, setImporting] = useState(false);
-  const [sampleOpen, setSampleOpen] = useState(false);
   useEffect(() => {
     try { navigator.storage?.persisted?.().then(setPersisted).catch(() => setPersisted(null)); } catch { setPersisted(null); }
   }, []);
@@ -62,7 +60,6 @@ export function DataSection({ data, current, part }: { data: AppData; current: s
             <Button variant="outlined" onClick={() => setTextMode('import')}>テキストを貼り付けて復元</Button>
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-            <Button onClick={() => setSampleOpen(true)}>サンプルデータを読み込む</Button>
             <Button color="error" onClick={async () => {
               if (!await confirmDialog('すべてのデータを削除します。元に戻せません。よろしいですか？')) return;
               await clearAll();
@@ -75,8 +72,6 @@ export function DataSection({ data, current, part }: { data: AppData; current: s
         </Stack>
         )}
       </CardContent>
-      <SampleDataDialog open={sampleOpen} hasData={data.items.length > 0 || data.accounts.length > 0} onClose={() => setSampleOpen(false)}
-        onLoaded={() => setMessage({ text: 'サンプルデータを読み込みました' })} />
       {importing && <ImportSheetDialog current={current} hasData={data.items.length > 0} onClose={() => setImporting(false)} />}
       {textMode && (
         <BackupTextDialog mode={textMode} onClose={() => setTextMode(null)}

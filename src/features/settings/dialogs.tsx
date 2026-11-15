@@ -1,5 +1,6 @@
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import { archiveToast, showToast } from '../../components/Toast';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
@@ -101,7 +102,7 @@ export function AccountDialog({ value, data, onClose }: { value?: Account; data:
     <Dialog open onClose={onClose}>
       <Title text={value ? '口座・カードを編集' : '口座・カードを追加'} archived={value?.archived}
         archiveHint="一覧と選択肢から隠す。登録済みの定期項目や過去の記録はそのまま"
-        onArchive={value && (async (a) => { await db.accounts.update(value.id, { archived: a }); onClose(); })} />
+        onArchive={value && (async (a) => { await db.accounts.update(value.id, { archived: a }); archiveToast(value.name, a); onClose(); })} />
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           <TextField id="acc-name" label="名前" value={name} onChange={(e) => setName(e.target.value)} autoFocus={canAutoFocus} fullWidth />
@@ -180,7 +181,7 @@ export function CategoryDialog({ value, data, onClose }: { value?: Category; dat
     <Dialog open onClose={onClose}>
       <Title text={value ? 'カテゴリを編集' : 'カテゴリを追加'} archived={value?.archived}
         archiveHint="一覧と選択肢から隠す。中の定期項目や過去の実績はそのまま"
-        onArchive={value && (async (a) => { await db.categories.update(value.id, { archived: a }); onClose(); })} />
+        onArchive={value && (async (a) => { await db.categories.update(value.id, { archived: a }); archiveToast(value.name, a); onClose(); })} />
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           <TextField id="cat-name" label="名前（家計簿アプリのカテゴリ名に合わせると振り返りが楽です）" value={name} onChange={(e) => setName(e.target.value)} autoFocus={canAutoFocus} fullWidth />
@@ -319,6 +320,7 @@ export function ItemDialog({ value, data, current, onClose }: { value?: Item; da
       await db.entries.where('itemId').equals(value.id).delete();
       await db.items.delete(value.id);
     });
+    showToast(`「${value.name}」を削除しました`);
     onClose();
   };
   // 終了月の選択肢は開始月から。開始月を終了月より後にしたら、終了月を空に戻す
@@ -345,7 +347,7 @@ export function ItemDialog({ value, data, current, onClose }: { value?: Item; da
         archiveHint="今月までで止める。来月から予算に入らず、過去の月はそのまま残る"
         unarchiveHint="アーカイブ前の終了月に戻して、また予算に入れる"
         deleteHint="過去の月も含めて、すべての予算から消す。元に戻せない"
-        onArchive={value && (async (a) => { await db.items.update(value.id, itemArchivePatch(value, a, current)); onClose(); })}
+        onArchive={value && (async (a) => { await db.items.update(value.id, itemArchivePatch(value, a, current)); archiveToast(value.name, a); onClose(); })}
         onDelete={value && remove} />
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
@@ -497,6 +499,7 @@ export function ChecklistDialog({ value, data, current, onClose }: {
     if (!value) return;
     if (!await confirmDialog(`「${value.label}」を削除します。よろしいですか？`)) return;
     await db.checklistTemplates.delete(value.id);
+    showToast(`「${value.label}」を削除しました`);
     onClose();
   };
 

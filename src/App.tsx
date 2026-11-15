@@ -19,6 +19,7 @@ import { ReceivablesPage } from './features/receivables/ReceivablesPage';
 import { SettingsPage, type SettingsPageId } from './features/settings/SettingsPage';
 import { ConfirmHost } from './components/ConfirmDialog';
 import { MENU_LABEL, MenuButton, MenuDrawer, TOUR_ROUTE } from './components/MenuDrawer';
+import { ToastHost } from './components/Toast';
 import { KitsuneLoading, KitsuneSays } from './components/Kitsune';
 import { TOUR_STEPS, Tour } from './features/welcome/Tour';
 import { Walkthrough } from './features/welcome/Walkthrough';
@@ -173,6 +174,7 @@ export function App() {
         go(r);
       }} />
       <ConfirmHost />
+      <ToastHost />
     </Box>
   );
 }

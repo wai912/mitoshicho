@@ -3,6 +3,7 @@ import { Component, StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { db } from './db/db';
+import { loadSampleData } from './db/sample';
 import { DEFAULT_SETTINGS } from './domain/types';
 import { useAppTheme } from './theme';
 
@@ -42,4 +43,14 @@ function Root() {
 db.settings.get('app').then((s) => { if (!s) return db.settings.put(DEFAULT_SETTINGS); }).catch(() => {});
 try { navigator.storage?.persist?.().catch(() => {}); } catch { /* 使えない環境では何もしない */ }
 
-createRoot(document.getElementById('root')!).render(<StrictMode><Root /></StrictMode>);
+// スクリーンショット用: ?sample=1 で開くとサンプルデータを入れる（データが空のときだけ。画面からは入れられない。iOS 版の起動引数 -sample と同じ役）
+async function start() {
+  if (new URLSearchParams(location.search).get('sample') === '1') {
+    // 使っている人のデータを置き換えないよう、データが空のときだけ
+    const empty = await Promise.all([db.items.count(), db.accounts.count()]).then(([i, a]) => i + a === 0).catch(() => false);
+    if (empty) await loadSampleData().catch(() => {});
+    history.replaceState(null, '', location.pathname + location.hash);
+  }
+  createRoot(document.getElementById('root')!).render(<StrictMode><Root /></StrictMode>);
+}
+start();

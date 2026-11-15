@@ -44,7 +44,7 @@ export function SetupGuide({ data }: { data: AppData }) {
         <Stack spacing={0.5}>
           <Typography variant="body2" color="text.secondary">まとめて入れたいときは</Typography>
           <Link href="#prefs-import" variant="body2" underline="hover">スプレッドシートから取り込む</Link>
-          <Link href="#prefs-backup" variant="body2" underline="hover">サンプルデータで試す・バックアップから復元する</Link>
+          <Link href="#prefs-backup" variant="body2" underline="hover">バックアップから復元する</Link>
         </Stack>
       </CardContent>
     </Card>

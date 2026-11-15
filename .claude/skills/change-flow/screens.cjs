@@ -1,7 +1,7 @@
 // みとおし帳の画面をライト／ダークで撮る（vite preview を http://localhost:4173 で動かしておく）
 // 使い方: node .claude/skills/change-flow/screens.cjs <出力先> [ハッシュ...]
 //   例: node .claude/skills/change-flow/screens.cjs /tmp/out home budget prefs-accounts
-// 最初にウォークスルーの1ページ目を撮り、サンプルデータを入れてから各画面を撮る
+// 最初にウォークスルーの1ページ目を撮り、サンプルデータ（?sample=1）を入れてから各画面を撮る
 const { chromium } = require('playwright');
 
 const [out, ...hashes] = process.argv.slice(2);
@@ -26,10 +26,8 @@ const base = process.env.BASE_URL || 'http://localhost:4173/';
       // 始めたあとの画面の案内は飛ばす
       const skipTour = page.getByRole('dialog').getByRole('button', { name: 'スキップ' });
       if (await skipTour.count()) { await skipTour.click(); await page.waitForTimeout(400); }
-      await page.goto(`${base}#prefs-backup`);
-      await page.waitForTimeout(400);
-      await page.getByRole('button', { name: 'サンプルデータを読み込む' }).click();
-      await page.getByRole('button', { name: 'サンプルデータを入れる' }).click();
+      // サンプルデータは画面からは入れられないので、?sample=1 で開き直して入れる
+      await page.goto(`${base}?sample=1#home`);
       await page.waitForTimeout(800);
     }
     for (const r of routes) {
