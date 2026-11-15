@@ -1,7 +1,6 @@
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import TuneIcon from '@mui/icons-material/Tune';
 import {
-  Accordion, AccordionDetails, AccordionSummary, Avatar, Box, Button, Card, CardContent, Chip, Divider, IconButton, Stack, Typography,
+  Avatar, Box, Button, Card, CardContent, Chip, Divider, IconButton, Stack, Typography,
 } from '@mui/material';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { summarize } from '../../domain/cashflow';
@@ -93,20 +92,17 @@ export function ReviewPage({ data, period, setPeriod, current, menu }: {
         {allEntered && drifts.length === 0 && (
           <Typography variant="body2" sx={{ mt: 1 }}>だいたい計画どおりだったよ。いい感じ！</Typography>
         )}
+        {/* 収入・積み立ても、たたまずにそのまま出す（計画と同じ小見出し） */}
         {others.length > 0 && (
-          <Accordion disableGutters elevation={0} sx={{ bgcolor: 'transparent', '&::before': { display: 'none' }, mt: 1 }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0 }}>
-              <Typography variant="body2" fontWeight={700} color="text.secondary">収入・積み立て</Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ px: 0 }}>
-              {others.map((c, i) => (
-                <Fragment key={c.category.id}>
-                  {i > 0 && <Divider />}
-                  <ActualRow row={c} period={period} plain />
-                </Fragment>
-              ))}
-            </AccordionDetails>
-          </Accordion>
+          <>
+            <Typography variant="caption" color="text.secondary" fontWeight={700} component="p" sx={{ mt: 2, mb: 0.5 }}>収入・積み立て</Typography>
+            {others.map((c, i) => (
+              <Fragment key={c.category.id}>
+                {i > 0 && <Divider />}
+                <ActualRow row={c} period={period} plain />
+              </Fragment>
+            ))}
+          </>
         )}
       </Section>
 
