@@ -51,7 +51,8 @@ export interface Account {
   archived: boolean;
 }
 
-export type CategoryKind = 'income' | 'expense' | 'debt' | 'saving';
+/** 返済（debt）は版 2 で支出にまとめた（upgrade.ts） */
+export type CategoryKind = 'income' | 'expense' | 'saving';
 
 export interface Category {
   id: string;
@@ -176,7 +177,8 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /**
  * データの形の版。iOS 版と共通（バックアップの version、iOS 版の iCloud の記録の v）。
- * 項目を足す・選択肢を増やす・意味を変えるときは上げて、古い版から直す方法を書く（iOS 版の CLAUDE.md の「データの形を変えるとき」）
+ * 項目を足す・選択肢を増やす・意味を変えるときは上げて、古い版から直す方法を書く（iOS 版の CLAUDE.md の「データの形を変えるとき」）。
+ * 直し方は domain/upgrade.ts。2: カテゴリの種類から返済をなくした（2026-11-15）
  */
-export const DATA_VERSION = 1;
+export const DATA_VERSION = 2;
 

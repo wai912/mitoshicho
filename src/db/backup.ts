@@ -1,5 +1,6 @@
 import { db, migrateLegacy, TABLES } from './db';
 import { DATA_VERSION } from '../domain/types';
+import { upgradeCategory } from '../domain/upgrade';
 
 const FORMAT = 'mitoshicho-backup';
 
@@ -38,6 +39,10 @@ export async function importJson(text: string): Promise<void> {
     const m = migrateLegacy({ items: tables.items, entries: tables.entries, records: tables.records });
     tables.entries = m.entries;
     tables.categoryActuals = [...(Array.isArray(tables.categoryActuals) ? tables.categoryActuals : []), ...m.categoryActuals];
+  }
+  // 古い版の形を今の形に直す（domain/upgrade.ts）
+  if (Array.isArray(tables.categories)) {
+    tables.categories = tables.categories.map((c: { kind: string }) => upgradeCategory(c, version));
   }
   // 以前のバッファの下限（使わなくなった値）は捨てる
   if (Array.isArray(tables.settings)) {

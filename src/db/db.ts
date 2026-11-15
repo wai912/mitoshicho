@@ -45,6 +45,10 @@ export class MitoshichoDB extends Dexie {
     this.version(4).stores({}).upgrade(async (tx) => {
       await tx.table('settings').toCollection().modify((s: Record<string, unknown>) => { delete s.bufferThreshold; });
     });
+    // v5（データの版 2）: カテゴリの種類「返済」を支出にする（domain/upgrade.ts）
+    this.version(5).stores({}).upgrade(async (tx) => {
+      await tx.table('categories').toCollection().modify((c: { kind: string }) => { if (c.kind === 'debt') c.kind = 'expense'; });
+    });
   }
 }
 

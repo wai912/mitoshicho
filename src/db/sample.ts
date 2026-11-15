@@ -51,7 +51,7 @@ export function buildSampleData(prev?: Settings): AppData {
     cat('c-medical', '病院', 'expense', 16),
     cat('c-sub', 'サブスク・通信', 'expense', 17),
     cat('c-annual', '年会費', 'expense', 18),
-    cat('c-debt', '返済', 'debt', 30),
+    cat('c-debt', '返済', 'expense', 19),
     cat('c-save', '貯金・投資', 'saving', 40),
   ];
 

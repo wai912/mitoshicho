@@ -1,19 +1,17 @@
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import {
-  Box, Button, Card, CardContent, CardHeader, Chip, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
+  Box, Button, Card, CardContent, CardHeader, Chip, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
   ListSubheader, Stack, ToggleButton, ToggleButtonGroup, Typography,
 } from '@mui/material';
 import { useState, type ReactNode } from 'react';
 import { countBetween } from '../../domain/items';
 import { amountFor } from '../../domain/cashflow';
 import { comparePeriods, periodFromLabel, periodYearLabel, periodRule, type StartDay } from '../../domain/period';
-import type { Account, AppData, Category, ChecklistTemplate, Item, Recurrence } from '../../domain/types';
+import type { Account, AppData, Category, CategoryKind, ChecklistTemplate, Item, Recurrence } from '../../domain/types';
 import { yen } from '../../lib/money';
 import { AccountDialog, CategoryDialog, ChecklistDialog, ItemDialog, KIND_LABEL } from './dialogs';
 import { DataSection } from './DataSection';
@@ -24,6 +22,7 @@ import { AddFab } from '../../components/AddFab';
 import { PageNote } from '../../components/PageNote';
 import { useThemePref } from '../../theme';
 import { moveCategory } from '../../db/ops';
+import { SortableList } from '../../components/SortableList';
 
 function recurrenceText(r: Recurrence, startDay: StartDay) {
   if (r.type === 'monthly') return '毎月';
@@ -43,13 +42,16 @@ function nextChange(i: Item, current: string) {
   return i.amountChanges?.find((c) => comparePeriods(c.from, current) > 0);
 }
 
+/** カテゴリの種類を出す順（支出をいちばん上に） */
+const KIND_ORDER: CategoryKind[] = ['expense', 'income', 'saving'];
+
 export type SettingsPageId = 'basic' | 'appearance' | 'accounts' | 'categories' | 'items' | 'checklist' | 'review' | 'plan' | 'import' | 'backup';
 
 /** メニューから開く設定の各ページ。1ページに1つの項目だけを出す */
 export function SettingsPage({ page, data, current }: { page: SettingsPageId; data: AppData; current: string }) {
   const [account, setAccount] = useState<Account | 'new' | null>(null);
   const [category, setCategory] = useState<Category | 'new' | null>(null);
-  // カテゴリの並び替えのあいだは、行を押しても編集を開かず、上下のボタンを出す
+  // カテゴリの並び替えのあいだは、つまみを出し、行を押しても編集を開かない
   const [sorting, setSorting] = useState(false);
   const [item, setItem] = useState<Item | 'new' | null>(null);
   const [showArchived, setShowArchivedState] = useState(readShowArchived);
@@ -115,42 +117,41 @@ export function SettingsPage({ page, data, current }: { page: SettingsPageId; da
         {toggle(accounts)}
       </Section>}
 
-      {page === 'categories' && <Section onAdd={sorting ? undefined : () => setCategory('new')}
-        note="家計簿アプリのカテゴリ名に合わせておくと、月末の振り返りが楽です。">
+      {/* カテゴリは種類ごとに分けて出す。「並び替え」を押すと右につまみが出て、ドラッグで同じ種類の中を並べ替える */}
+      {page === 'categories' && <>
+        <PageNote>家計簿アプリのカテゴリ名に合わせておくと、月末の振り返りが楽です。</PageNote>
+        {categories.length === 0 && <Card><List dense><Empty>カテゴリを登録してください</Empty></List></Card>}
         {visible(categories).length > 1 && (
-          <Stack direction="row" justifyContent="flex-end" sx={{ px: 1, pt: 1 }}>
+          <Stack direction="row" justifyContent="flex-end" sx={{ mt: '8px !important', mb: '-8px !important' }}>
             <Button size="small" variant={sorting ? 'contained' : 'text'} startIcon={sorting ? undefined : <SwapVertIcon />}
               onClick={() => setSorting(!sorting)}>
               {sorting ? '完了' : '並び替え'}
             </Button>
           </Stack>
         )}
-        <List dense>
-          {categories.length === 0 && <Empty>カテゴリを登録してください</Empty>}
-          {visible(categories).map((c, i, shown) => (
-            <ListItem key={c.id} disablePadding sx={{ opacity: c.archived ? 0.5 : 1 }}
-              secondaryAction={sorting ? (
-                <Stack direction="row">
-                  <IconButton aria-label={`${c.name} を上へ`} disabled={i === 0}
-                    onClick={() => moveCategory(shown.map((x) => x.id), c.id, -1)}><ArrowUpwardIcon /></IconButton>
-                  <IconButton aria-label={`${c.name} を下へ`} disabled={i === shown.length - 1}
-                    onClick={() => moveCategory(shown.map((x) => x.id), c.id, 1)}><ArrowDownwardIcon /></IconButton>
-                </Stack>
-              ) : undefined}>
-              {sorting ? (
-                <ListItemText primary={c.name} sx={{ px: 2, py: 0.75, pr: 12 }} />
-              ) : (
-                <ListItemButton onClick={() => setCategory(c)}>
-                  <ListItemText primary={c.name} />
-                  {c.archived && <ArchivedChip />}
-                  <Typography variant="caption" color="text.secondary">{KIND_LABEL[c.kind]}</Typography>
-                </ListItemButton>
-              )}
-            </ListItem>
-          ))}
-        </List>
-        {toggle(categories)}
-      </Section>}
+        {KIND_ORDER.map((kind) => {
+          const shown = visible(categories).filter((c) => c.kind === kind);
+          if (shown.length === 0) return null;
+          const ids = shown.map((x) => x.id);
+          return (
+            <Card key={kind}>
+              <CardHeader title={KIND_LABEL[kind]} titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }} sx={{ pb: 0 }} />
+              <SortableList items={shown} enabled={sorting} label={(c) => `${c.name} を動かす`}
+                onMove={(id, to) => moveCategory(ids, id, to)}>
+                {(c) => (
+                  <ListItemButton dense disabled={sorting} onClick={() => setCategory(c)}
+                    sx={{ opacity: c.archived ? 0.5 : 1, pr: sorting ? 0 : 2, '&.Mui-disabled': { opacity: c.archived ? 0.5 : 1 } }}>
+                    <ListItemText primary={c.name} />
+                    {c.archived && <ArchivedChip />}
+                  </ListItemButton>
+                )}
+              </SortableList>
+            </Card>
+          );
+        })}
+        {categories.some((c) => c.archived) && <Card>{toggle(categories)}</Card>}
+        {!sorting && <AddFab onClick={() => setCategory('new')} />}
+      </>}
 
       {page === 'items' && <Section onAdd={categories.length > 0 ? () => setItem('new') : undefined}
         note="登録した金額が毎月の予算に自動で入ります。その月だけの金額の変更や、1回だけの項目は「計画」で入れます。">
