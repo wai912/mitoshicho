@@ -1,7 +1,7 @@
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import TuneIcon from '@mui/icons-material/Tune';
 import {
-  Accordion, AccordionDetails, AccordionSummary, Avatar, Box, Button, Card, CardContent, Divider, IconButton, LinearProgress, Stack, Typography,
+  Accordion, AccordionDetails, AccordionSummary, Avatar, Box, Button, Card, CardContent, Chip, Divider, IconButton, Stack, Typography,
 } from '@mui/material';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { summarize } from '../../domain/cashflow';
@@ -14,6 +14,7 @@ import { PeriodNav } from '../../components/PeriodNav';
 import { Confetti } from '../../components/Confetti';
 import { KITSUNE } from '../../components/Kitsune';
 import { InfoTip } from '../../components/InfoTip';
+import { FitBar, Figure } from '../../components/FitBar';
 import { ActualRow, CardBills } from '../budget/parts';
 import { DriftInline, HintsCard } from './Drift';
 
@@ -142,37 +143,28 @@ function Section({ title, sub, done, action, children }: {
   );
 }
 
-/** 上のまとめ: 何カテゴリ入れたか（バー）、目立つずれの数、支出の合計 */
+/**
+ * 上のまとめ（計画のまとめと同じ形）: 予算・使った・目立つずれの数字と、予算に収まっているかのバー。
+ * 何カテゴリ入れたかは見出しの横に
+ */
 function Progress({ entered, total, drifts, untagged, actual, planned }: {
   entered: number; total: number; drifts: number; untagged: number; actual: number; planned: number;
 }) {
-  const left = total - entered;
   return (
     <Card data-tour="review-steps">
       <CardContent sx={{ pb: '16px !important' }}>
-        <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1}>
-          <Typography variant="body2" fontWeight={900}>実績</Typography>
-          <Typography fontWeight={900} sx={{ fontSize: 17 }}>
-            {entered}<Box component="span" sx={{ color: 'text.secondary', fontWeight: 700, fontSize: 14 }}> / {total}</Box>
-          </Typography>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+          <Typography variant="body2" fontWeight={900}>支出</Typography>
+          <Chip size="small" variant="outlined" color={entered === total ? 'success' : 'default'}
+            label={`入力 ${entered} / ${total}`} sx={{ height: 24, fontSize: 12, fontWeight: 700 }} />
         </Stack>
-        <LinearProgress variant="determinate" value={total ? (entered / total) * 100 : 0} color={left === 0 ? 'success' : 'primary'}
-          aria-label={`実績 ${entered} / ${total} カテゴリ`} sx={{ mt: 0.75, height: 10, borderRadius: 5 }} />
-        <Stack direction="row" spacing={1} sx={{ mt: 1.25 }} useFlexGap flexWrap="wrap">
-          <Stat label="使った" value={`${yen(actual)}`} sub={`予算 ${yen(planned)}`} />
-          <Stat label="目立つずれ" value={`${drifts}件`} sub={untagged > 0 ? `種類まだ ${untagged}` : undefined} />
+        <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
+          <Figure label="予算" value={planned} />
+          <Figure label="使った" value={actual} dot="primary.main" />
+          <Figure label="目立つずれ" value={`${drifts}件`} sub={untagged > 0 ? `種類まだ ${untagged}` : undefined} />
         </Stack>
+        <FitBar base={planned} segments={[{ value: actual, color: 'primary.main' }]} overText={(o) => `予算を ${yen(o)} こえた`} />
       </CardContent>
     </Card>
-  );
-}
-
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <Box sx={{ flex: 1, minWidth: 120, px: 1.25, py: 0.75, borderRadius: '10px', bgcolor: 'soft' }}>
-      <Typography variant="caption" color="text.secondary" component="p">{label}</Typography>
-      <Typography fontWeight={900} sx={{ whiteSpace: 'nowrap' }}>{value}</Typography>
-      {sub && <Typography variant="caption" color="text.secondary" component="p">{sub}</Typography>}
-    </Box>
   );
 }

@@ -15,6 +15,7 @@ import { yen } from '../../lib/money';
 import { MoneyField } from '../../components/MoneyField';
 import { PeriodNav } from '../../components/PeriodNav';
 import { InfoTip } from '../../components/InfoTip';
+import { FitBar, Figure } from '../../components/FitBar';
 import { CategoryItems } from '../budget/parts';
 import { OnceItemDialog } from '../settings/dialogs';
 import { OutflowsCard } from '../home/Outlook';
@@ -128,37 +129,11 @@ function BudgetMain({ income, spend, saving }: { income: number; spend: number; 
   );
 }
 
-/**
- * 使う予定と積み立てが、収入に収まっているかを1本のバーで。
- * 収入をこえた分は、バーの外にはみ出した形（しま模様）で見せる。責める色（赤）は使わない
- */
+/** 使う予定と積み立てが、収入に収まっているか */
 function PlanBar({ income, spend, saving }: { income: number; spend: number; saving: number }) {
-  const used = spend + saving;
-  const max = Math.max(income, used, 1);
-  const over = used - income;
-  const pct = (v: number) => `${(v / max) * 100}%`;
   return (
-    <Box sx={{ mt: 1.25 }}>
-      <Box role="img" aria-label={over > 0 ? `収入を ${yen(over)} こえている` : '収入の中に収まっている'}
-        sx={{ position: 'relative', height: 10, borderRadius: 5, bgcolor: 'soft', overflow: 'hidden' }}>
-        <Box sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: pct(Math.min(spend, max)), bgcolor: 'primary.main' }} />
-        <Box sx={{ position: 'absolute', left: pct(spend), top: 0, bottom: 0, width: pct(saving), bgcolor: 'success.main' }} />
-        {over > 0 && (
-          <Box sx={{
-            position: 'absolute', left: pct(income), top: 0, bottom: 0, right: 0,
-            backgroundImage: (t) => `repeating-linear-gradient(135deg, transparent 0 4px, ${t.palette.background.paper} 4px 7px)`,
-          }} />
-        )}
-        {over > 0 && <Box sx={{ position: 'absolute', left: pct(income), top: -2, bottom: -2, width: 2, bgcolor: 'text.primary' }} />}
-      </Box>
-      {/* 収まっているときは何も書かない（余りを細かく見せて合わせさせない） */}
-      {over > 0 && (
-        <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mt: 0.5 }}>
-          <Typography variant="body2" color="warning.main" fontWeight={700}>収入を {yen(over)} こえている</Typography>
-          <InfoTip label="こえたときは" text={OVER_TIP} />
-        </Stack>
-      )}
-    </Box>
+    <FitBar base={income} segments={[{ value: spend, color: 'primary.main' }, { value: saving, color: 'success.main' }]}
+      overText={(o) => `収入を ${yen(o)} こえている`} overTip={<InfoTip label="こえたときは" text={OVER_TIP} />} />
   );
 }
 
@@ -216,18 +191,6 @@ function SectionLabel({ title, note }: { title: string; note: string }) {
       <Typography variant="body2" fontWeight={900}>{title}</Typography>
       <InfoTip label={`${title}の数え方`} text={note} />
     </Stack>
-  );
-}
-
-function Figure({ label, value, dot }: { label: string; value: number; dot?: string }) {
-  return (
-    <Box sx={{ minWidth: 0 }}>
-      <Stack direction="row" alignItems="center" spacing={0.5}>
-        {dot && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: dot, flexShrink: 0 }} />}
-        <Typography variant="caption" color="text.secondary">{label}</Typography>
-      </Stack>
-      <Typography fontWeight={700} sx={{ whiteSpace: 'nowrap', fontSize: 17 }}>{yen(value)}</Typography>
-    </Box>
   );
 }
 
