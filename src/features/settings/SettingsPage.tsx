@@ -43,7 +43,7 @@ function nextChange(i: Item, current: string) {
 }
 
 /** カテゴリの種類を出す順（支出をいちばん上に） */
-const KIND_ORDER: CategoryKind[] = ['expense', 'income', 'debt', 'saving'];
+const KIND_ORDER: CategoryKind[] = ['expense', 'income', 'saving'];
 
 export type SettingsPageId = 'basic' | 'appearance' | 'accounts' | 'categories' | 'items' | 'checklist' | 'review' | 'plan' | 'import' | 'backup';
 

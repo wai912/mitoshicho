@@ -96,7 +96,7 @@ export function ReviewPage({ data, period, setPeriod, current, menu }: {
         {others.length > 0 && (
           <Accordion disableGutters elevation={0} sx={{ bgcolor: 'transparent', '&::before': { display: 'none' }, mt: 1 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0 }}>
-              <Typography variant="body2" fontWeight={700} color="text.secondary">収入・返済・積み立て</Typography>
+              <Typography variant="body2" fontWeight={700} color="text.secondary">収入・積み立て</Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ px: 0 }}>
               {others.map((c, i) => (

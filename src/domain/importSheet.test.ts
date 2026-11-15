@@ -60,7 +60,7 @@ describe('parseBudgetSheet', () => {
     expect(names).toEqual([
       ['家賃', 'expense', ['家賃']],
       ['光熱費', 'expense', ['電気', 'ガス']],
-      ['返済', 'debt', ['ローンA']],
+      ['返済', 'expense', ['ローンA']],
     ]);
     expect(r.categories[2].items[1].day).toBe(20);
     expect(r.categories[3].items[0].day).toBe(25);

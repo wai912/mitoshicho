@@ -34,7 +34,7 @@ export function PlanPage({ data, period, setPeriod, current, menu }: {
 
   const total = (k: CategoryKind[]) => s.categories.filter((c) => k.includes(c.kind)).reduce((a, c) => a + c.planned, 0);
   const income = total(['income']);
-  const spend = total(['expense', 'debt']);
+  const spend = total(['expense']);
   const saving = total(['saving']);
   const expense = s.categories.filter((c) => c.kind === 'expense');
   const others = s.categories.filter((c) => c.kind !== 'expense');
@@ -62,7 +62,7 @@ export function PlanPage({ data, period, setPeriod, current, menu }: {
           {expense.map((c) => <CategoryRowView key={c.category.id} row={c} last={lastMonth.get(c.category.id)} hint={hints.get(c.category.id)} period={period} data={data} />)}
           {others.length > 0 && (
             <>
-              <Typography variant="caption" color="text.secondary" fontWeight={700} component="p" sx={{ mt: 2, mb: 0.5 }}>収入・返済・積み立て</Typography>
+              <Typography variant="caption" color="text.secondary" fontWeight={700} component="p" sx={{ mt: 2, mb: 0.5 }}>収入・積み立て</Typography>
               {others.map((c) => <CategoryRowView key={c.category.id} row={c} period={period} data={data} />)}
             </>
           )}

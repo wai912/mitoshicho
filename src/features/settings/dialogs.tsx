@@ -21,7 +21,7 @@ import { confirmDialog } from '../../components/ConfirmDialog';
 import { canAutoFocus } from '../../lib/device';
 import { yen } from '../../lib/money';
 
-export const KIND_LABEL: Record<CategoryKind, string> = { income: '収入', expense: '支出', debt: '返済', saving: '貯金・投資' };
+export const KIND_LABEL: Record<CategoryKind, string> = { income: '収入', expense: '支出', saving: '貯金・投資' };
 const nextOrder = (xs: { sortOrder: number }[]) => (xs.length ? Math.max(...xs.map((x) => x.sortOrder)) + 1 : 0);
 
 /** ダイアログのタイトル。編集のときは右上の「⋮」からアーカイブ・削除を選ぶ */

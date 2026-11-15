@@ -82,7 +82,6 @@ const SECTIONS = { 収入: 'income', 支出: 'expense', クレカ: 'card' } as c
 type Section = (typeof SECTIONS)[keyof typeof SECTIONS];
 
 function categoryKind(name: string): CategoryKind {
-  if (/返済|ローン/.test(name)) return 'debt';
   if (/貯金|投資|積立/.test(name)) return 'saving';
   return 'expense';
 }
