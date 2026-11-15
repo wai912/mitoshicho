@@ -1,6 +1,7 @@
 import { categoryActualId, entryId } from '../domain/cashflow';
 import { db } from './db';
 import type { DriftKind } from '../domain/types';
+import { moveOrder } from '../domain/order';
 
 /** Entry（期ごとの予算上書き）を部分更新する。空になれば削除 */
 export async function patchEntry(
@@ -61,4 +62,12 @@ export async function toggleCheck(periodId: string, key: string, done: boolean):
   const id = `${periodId}:${key}`;
   if (done) await db.checklistDone.put({ id, periodId, key, doneAt: new Date().toISOString() });
   else await db.checklistDone.delete(id);
+}
+
+/** カテゴリを1つ上（-1）か下（+1）へ。shown は画面に出ている順の ID */
+export async function moveCategory(shown: string[], id: string, dir: -1 | 1): Promise<void> {
+  await db.transaction('rw', db.categories, async () => {
+    const next = moveOrder(await db.categories.toArray(), shown, id, dir);
+    if (next) await db.categories.bulkPut(next);
+  });
 }
