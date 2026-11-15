@@ -5,11 +5,12 @@ import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
 interface Drag { id: string; from: number; to: number; startY: number; dy: number; centers: number[]; height: number }
 
 /**
- * つまみ（⋮⋮）をつかんで、上下にドラッグして並べ替える一覧。指でもマウスでも動く。
+ * つまみ（⋮⋮）をつかんで、上下にドラッグして並べ替える一覧。指でもマウスでも動く。enabled のときだけつまみを出す。
  * 行を押したときの動き（編集を開くなど）は、行の中身（children）に任せる。離したときに onMove(id, 新しい場所) を呼ぶ
  */
-export function SortableList<T extends { id: string }>({ items, onMove, label, children }: {
+export function SortableList<T extends { id: string }>({ items, enabled, onMove, label, children }: {
   items: T[];
+  enabled: boolean;
   onMove: (id: string, to: number) => void;
   /** つまみの読み上げ（例: 食費 を動かす） */
   label: (item: T) => string;
@@ -57,11 +58,11 @@ export function SortableList<T extends { id: string }>({ items, onMove, label, c
               zIndex: active ? 2 : 1, boxShadow: active ? 4 : 0, borderRadius: active ? '10px' : 0,
             }}>
             <Box sx={{ flex: 1, minWidth: 0 }}>{children(x)}</Box>
-            <Box role="button" aria-label={label(x)} tabIndex={-1}
+            {enabled && <Box role="button" aria-label={label(x)} tabIndex={-1}
               onPointerDown={(e) => start(e, x.id, i)} onPointerMove={move} onPointerUp={end} onPointerCancel={() => setDrag(null)}
               sx={{ px: 1.5, alignSelf: 'stretch', display: 'flex', alignItems: 'center', color: 'text.secondary', cursor: active ? 'grabbing' : 'grab', touchAction: 'none' }}>
               <DragIndicatorIcon />
-            </Box>
+            </Box>}
           </Box>
         );
       })}
