@@ -1,11 +1,12 @@
 import { db, migrateLegacy, TABLES } from './db';
+import { DATA_VERSION } from '../domain/types';
 
 const FORMAT = 'mitoshicho-backup';
 
 export async function exportJson(): Promise<string> {
   const tables: Record<string, unknown[]> = {};
   for (const t of TABLES) tables[t] = await db.table(t).toArray();
-  return JSON.stringify({ format: FORMAT, version: 1, exportedAt: new Date().toISOString(), tables }, null, 2);
+  return JSON.stringify({ format: FORMAT, version: DATA_VERSION, exportedAt: new Date().toISOString(), tables }, null, 2);
 }
 
 export async function downloadBackup(): Promise<void> {
@@ -26,6 +27,11 @@ export async function importJson(text: string): Promise<void> {
   const parsed = JSON.parse(text);
   if (parsed?.format !== FORMAT || typeof parsed.tables !== 'object') {
     throw new Error('家計の見通し帳のバックアップファイルではありません');
+  }
+  // 新しい版の形は読まない（古いアプリで読んで書き戻すと、新しい項目が消えるため）。版がなければ 1
+  const version = typeof parsed.version === 'number' ? parsed.version : 1;
+  if (version > DATA_VERSION) {
+    throw new Error('新しいバージョンのアプリで作ったバックアップです。アプリをアップデートしてから読み込んでね');
   }
   const tables = { ...parsed.tables };
   if (Array.isArray(tables.entries) && Array.isArray(tables.items)) {

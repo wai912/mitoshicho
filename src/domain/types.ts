@@ -174,3 +174,10 @@ export const DEFAULT_SETTINGS: Settings = {
   id: 'app',
   periodStartDay: 15,
 };
+
+/**
+ * データの形の版。iOS 版と共通（バックアップの version、iOS 版の iCloud の記録の v）。
+ * 項目を足す・選択肢を増やす・意味を変えるときは上げて、古い版から直す方法を書く（iOS 版の CLAUDE.md の「データの形を変えるとき」）
+ */
+export const DATA_VERSION = 1;
+
